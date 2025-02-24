@@ -1,54 +1,74 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-ENV['VAGRANT_SERVER_URL'] = 'https://vagrant.elab.pro'
-
 Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/focal64"
   config.vm.box_check_update = false
-  config.vm.hostname = "vm1-otus"
-  config.vm.define "vm1-otus"
-  # config.ssh.password = "vagrant"
-  # config.ssh.insert_key = true
-  # config.ssh.private_key_path = ['~/.ssh/id_rsa.pub']
-  # config.vm.network "forwarded_port", guest: 22, host: 2222, host_ip: "127.0.0.1"
-
-  # config.vm.network "forwarded_port", guest: 80, host: 8080
-  # config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
-  # config.vm.network "private_network", ip: "192.168.33.10"
+  config.vm.hostname = "node1"
+  config.vm.define "node1"
   config.vm.network "public_network", ip: "192.168.190.22"
   config.vm.synced_folder ".", "/vagrant", disabled: true
-
   config.vm.provider "virtualbox" do |vb|
-  #   # Display the VirtualBox GUI when booting the machine
-  #   vb.gui = true
+        vb.name = "node1"
+        vb.cpus = "2"
+        vb.memory = "2048"
 
-     vb.name = "vm1-otus"
-     vb.cpus = "2"
-     vb.memory = "2048"
-   end
+      # adding block devices
+      
+        disk1 = "./node1_disk1.vdi"
+        disk2 = "./node1_disk2.vdi"
+        disk3 = "./node1_disk3.vdi"
+        disk4 = "./node1_disk4.vdi" 
+        disk5 = "./node1_disk5.vdi"    
 
-  #
-  # View the documentation for the provider you are using for more
-  # information on available options.
+      # If disks don't exist, create them
+        unless FileTest.exist?(disk1)
+          vb.customize ['createhd', '--filename', disk1, '--variant', 'Fixed', '--size', 100]
+        end      
+        unless FileTest.exist?(disk2)
+          vb.customize ['createhd', '--filename', disk2, '--variant', 'Fixed', '--size', 100]
+        end
+        unless FileTest.exist?(disk3)
+          vb.customize ['createhd', '--filename', disk3, '--variant', 'Fixed', '--size', 100]
+        end
+        unless FileTest.exist?(disk4)
+          vb.customize ['createhd', '--filename', disk4, '--variant', 'Fixed', '--size', 100]
+        end
+        unless FileTest.exist?(disk5)
+          vb.customize ['createhd', '--filename', disk5, '--variant', 'Fixed', '--size', 100]
+        end   
+      # Attach the drives to the SCSI controller
+        vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', disk1]
+        vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 3, '--device', 0, '--type', 'hdd', '--medium', disk2]
+        vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 4, '--device', 0, '--type', 'hdd', '--medium', disk3]
+        vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 5, '--device', 0, '--type', 'hdd', '--medium', disk4]
+        vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 6, '--device', 0, '--type', 'hdd', '--medium', disk5]
+      end
+      # Start doing some real work
+      # If the block device won't mount then it needs an FS
+      
+      # Enable provisioning
+       config.vm.provision "ansible" do |ansible|
+        ansible.playbook = "/home/rg/vm/ansible/playbook_mdraid.yml"        
 
-  # Enable provisioning with a shell script. Additional provisioners such as
-  # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
-  # documentation for more information about their specific syntax and use.
-  # config.vm.provision "ansible" do |ansible|
-  # ansible = vm1-otus.yml
+       end
+
+
+      #node.vm.provision "shell", inline: <<-SHELL
+      #  sudo mkdir /mnt/persistent1
+      #  sudo mkdir /mnt/persistent2
+      #  if ! (sudo mount /dev/sdc /mnt/persistent1); then sudo mkfs.ext4 /dev/sdc; sudo mount /dev/sdc /mnt/persistent1; fi
+      #  if ! (sudo mount /dev/sdd /mnt/persistent2); then sudo mkfs.ext4 /dev/sdd; sudo mount /dev/sdd /mnt/persistent2; fi
+      #  # Update and upgrade
+      #  sudo apt-get update
+      #  sudo apt-get upgrade -y
+        # Install Docker stable
+      #  sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+      #  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+      #  sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+      #  sudo apt-get update
+      #  sudo apt-get install -y docker-ce
+      #SHELL
+       
+  end
   
-	config.vm.provision "shell", inline: <<-SHELL
-   
-  mkdir -p ~root/.ssh
-  cp ~vagrant/.ssh/auth* ~root/.ssh
-  sudo sed -i 's/\#PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-  systemctl restart sshd
-
-  # useradd -m -s /bin/bash -U ivan	
-  #  apt-get update
-  #  apt-get install -y nginx
-    
-  SHELL
-
-end
