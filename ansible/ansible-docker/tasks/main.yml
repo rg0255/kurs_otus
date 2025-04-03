@@ -1,0 +1,8 @@
+---
+# tasks file for ansible-docker
+#
+
+- include_tasks: docker-install.yml
+
+#- include_tasks: docker-image-build.yml
+  
