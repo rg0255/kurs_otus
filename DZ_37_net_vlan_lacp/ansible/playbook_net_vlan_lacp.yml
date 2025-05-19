@@ -1,0 +1,74 @@
+---
+- name: Base set up
+#Настройка производится на всех хостах
+  hosts: all
+  become: yes
+  tasks:
+  #Установка приложений на RedHat-based системах
+  - name: install software on CentOS
+    yum:
+      name:
+        - vim
+        - traceroute
+        - tcpdump
+        - net-tools
+        - network-manager
+      state: present
+      update_cache: true
+    when: (ansible_os_family == "CentOS")
+  
+  #Установка приложений на Debian-based системах
+  - name: install software on Debian-based (Debian or Ubuntu)
+    apt:
+      name: 
+        - vim
+        - traceroute
+        - tcpdump
+        - net-tools
+        - network-manager
+      state: present
+      update_cache: true
+    when: (ansible_os_family == "Debian") or (ansible_os_family == "Ubuntu")
+
+  #Настройка VLAN 1 на хостах testClient1 и testServer1:
+  - name: set up vlan1
+    template:
+      src: ./ansible-net_vlan_lacp/templates/50-cloud-init.yaml.j2
+      dest: /etc/netplan/50-cloud-init.yaml 
+      owner: root
+      group: root
+      mode: 0644      
+    when: (ansible_hostname == "testClient1") or (ansible_hostname == "testServer1")
+
+  - name: apply set up vlan1
+    shell: netplan apply
+    become: true
+
+  #Настройка VLAN 2 на хостах testClient2 и testServer2:
+  - name: set up vlan2
+    template:
+      src: ./ansible-net_vlan_lacp/templates/50-cloud-init.yaml.j2
+      dest: /etc/netplan/50-cloud-init.yaml 
+      owner: root
+      group: root
+      mode: 0644      
+    when: (ansible_hostname == "testClient2") or (ansible_hostname == "testServer2") 
+
+  - name: apply set up vlan2
+    shell: netplan apply
+    become: true
+      
+  #Настройка bond на хостах inetRouter и centralRouter:
+  - name: Configure bond
+    become: true
+    template:
+      src: ./ansible-net_vlan_lacp/templates/netplan-config.j2
+      dest: /etc/netplan/01-bond-cfg.yaml
+    notify: Apply Netplan Configuration    
+    when: (ansible_hostname == "inetRouter") or (ansible_hostname == "centralRouter") 
+
+  handlers:
+   - name: Apply Netplan Configuration
+     shell: netplan apply
+  
+ 
